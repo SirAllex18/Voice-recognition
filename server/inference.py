@@ -93,7 +93,7 @@ def extract_mfcc_inference(
         mfcc = mfcc[:, :max_len]
     
     return mfcc
--
+
 def predict_speaker(
     model: nn.Module,
     audio_input,
