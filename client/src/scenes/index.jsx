@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  CircularProgress
 } from "@mui/material";
 
 const HomePage = () => {
@@ -21,21 +22,71 @@ const HomePage = () => {
     prenume: "",
     parola: "",
   });
+  const [recording, setRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  
+  let mediaRecorder;
+  let audioChunks = [];
+  const startRecording = () => {
+    setRecording(true);
+    setErrorMessage(null);
 
-  const handleAuthenticationLogic = () => {
-    if (isLogin === false) {
-      setOpenDialog(true);
-    } else {
-      console.log("Hello Bianca");
-    }
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setAudioUrl(audioUrl);
+          audioChunks = [];
+
+          const audioFile = new File([audioBlob], "recording.wav", {
+            type: "audio/wav",
+          });
+
+          uploadAudio(audioFile);
+        };
+
+        // Stop recording after 3-5 seconds
+        setTimeout(() => {
+          mediaRecorder.stop();
+          setRecording(false);
+        }, 5000);
+      })
+      .catch((error) => {
+        setErrorMessage("Error accessing microphone: " + error.message);
+        setRecording(false);
+      });
   };
 
-  const handleRecognitionLogic = () => {
-    if (isLogin === false) {
-      setOpenDialog(true); 
-    } else {
-      console.log("Hello Bianca");
-    }
+  const uploadAudio = (audioFile) => {
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("audio", audioFile);
+
+    fetch("http://localhost:8000/recognize", {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log("Upload successful:", data);
+        setIsUploading(false);
+      })
+      .catch((error) => {
+        console.error("Error uploading file:", error);
+        setErrorMessage("Failed to upload audio.");
+        setIsUploading(false);
+      });
   };
 
   const handleCloseDialog = () => {
@@ -73,10 +124,10 @@ const HomePage = () => {
           sx={{
             border: 2,
             borderRadius: 2,
-            padding: 4, 
-            width: "300px", 
+            padding: 4,
+            width: "300px",
             textAlign: "center",
-            boxShadow: 2
+            boxShadow: 2,
           }}
         >
           <Box
@@ -89,22 +140,25 @@ const HomePage = () => {
           >
             <Button
               variant="contained"
-              sx={{
-                width: "200px",
-              }}
-              onClick={handleAuthenticationLogic}
+              color="primary"
+              onClick={startRecording}
+              disabled={recording}
+              style={{ marginTop: "20px" }}
             >
-              Authentication
+              {recording ? "Recording..." : "Start Recording"}
             </Button>
-            <Button
-              variant="contained"
-              sx={{
-                width: "200px",
-              }}
-              onClick={handleRecognitionLogic}
-            >
-              Recognition
-            </Button>
+            {recording && <CircularProgress style={{ marginTop: "20px" }} />}
+            {audioUrl && (
+              <audio
+                controls
+                src={audioUrl}
+                style={{ display: "block", marginTop: "20px" }}
+              />
+            )}
+            {isUploading && <Typography>Uploading...</Typography>}
+            {errorMessage && (
+              <Typography color="error">{errorMessage}</Typography>
+            )}
           </Box>
         </Box>
       </Container>
