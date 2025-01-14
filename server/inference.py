@@ -6,36 +6,14 @@ import argparse
 import soundfile as sf
 import io
 import os
+from speaker_cnn import SpeakerCNN
 
-class SpeakerCNN(nn.Module):
-    def __init__(self, num_speakers):
-        super(SpeakerCNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        self.pool  = nn.MaxPool2d(2, 2)
-        self.fc1   = None  
-        self.fc2   = None
-
-    def forward(self, x):
-        x = self.pool(torch.relu(self.conv1(x)))
-        x = self.pool(torch.relu(self.conv2(x)))
-        x_flat = x.view(x.size(0), -1)
-        
-        if self.fc1 is None:
-            in_features = x_flat.size(1)
-            self.fc1 = nn.Linear(in_features, 64).to(x.device)
-            self.fc2 = nn.Linear(64, num_speakers).to(x.device)
-
-        x = torch.relu(self.fc1(x_flat))
-        x = self.fc2(x)
-        return x
-    
 def load_model(model_path: str, num_speakers: int, device: torch.device):
     """
     Create the SpeakerCNN, load its state_dict, and set to eval mode.
     """
     model = SpeakerCNN(num_speakers=num_speakers)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model.to(device)
     model.eval()
     return model
@@ -44,7 +22,7 @@ def extract_mfcc_inference(
     audio_input,
     sr=16000,
     n_mfcc=40,
-    max_len=200,
+    max_len=400,
     is_file_path=True
 ):
     """
@@ -68,24 +46,19 @@ def extract_mfcc_inference(
     -------
     mfcc : np.ndarray of shape (n_mfcc, max_len)
     """
-    # 1. Load audio
     if is_file_path:
         y, orig_sr = librosa.load(audio_input, sr=None)
     else:
         y, orig_sr = sf.read(io.BytesIO(audio_input))
     
-    # 2. Resample if needed
     if orig_sr != sr:
         y = librosa.resample(y, orig_sr=orig_sr, target_sr=sr)
         orig_sr = sr
     
-    # 3. Extract MFCC
     mfcc = librosa.feature.mfcc(y=y, sr=orig_sr, n_mfcc=n_mfcc)
     
-    # 4. Normalize
     mfcc = (mfcc - np.mean(mfcc)) / (np.std(mfcc) + 1e-9)
     
-    # 5. Pad or truncate
     if mfcc.shape[1] < max_len:
         pad_width = max_len - mfcc.shape[1]
         mfcc = np.pad(mfcc, ((0, 0), (0, pad_width)), mode='constant')
@@ -99,9 +72,9 @@ def predict_speaker(
     audio_input,
     device: torch.device,
     threshold: float = 0.7,
-    label_map: dict = None,
+    reverse_label_map= None,
     num_mfcc: int = 40,
-    max_len: int = 200,
+    max_len: int = 400,
     is_file_path=True
 ):
     """
@@ -133,7 +106,6 @@ def predict_speaker(
     predicted_label_or_unknown, confidence
     """
 
-    # 1. Extract MFCC
     mfcc = extract_mfcc_inference(
         audio_input=audio_input,
         sr=16000,
@@ -142,33 +114,35 @@ def predict_speaker(
         is_file_path=is_file_path
     ) 
 
-    # 2. Convert to torch tensor => (1, 1, n_mfcc, max_len)
     input_tensor = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
 
-    # 3. Forward pass
     with torch.no_grad():
         outputs = model(input_tensor)   
         probs = torch.softmax(outputs, dim=1).cpu().numpy()[0]
     
-    # 4. Determine predicted label
     predicted_label = np.argmax(probs)
     confidence = probs[predicted_label]
 
-    # 5. Check threshold for 'unknown'
-    if confidence < threshold:
-        return "unknown", float(confidence)
-    else:
-        if label_map is not None and predicted_label in label_map:
-            return label_map[predicted_label], float(confidence)
-        else:
-            return predicted_label, float(confidence)
+    predicted_label = int(predicted_label)
+    confidence = float(confidence)
 
+    if confidence < threshold:
+        return "unknown", confidence
+    else:
+        if reverse_label_map is not None:
+            if predicted_label in reverse_label_map:
+                label_str = reverse_label_map[predicted_label]
+                return label_str, confidence
+            else:
+                return f"id{predicted_label}", confidence
+        else:
+            return predicted_label, confidence
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_path", type=str, required=True, help="Path to a .wav file.")
     parser.add_argument("--model_path", type=str, default="speaker_cnn_model.pth", help="Path to the trained model state_dict.")
-    parser.add_argument("--num_speakers", type=int, default=10, help="Number of speaker classes in the model.")
+    parser.add_argument("--num_speakers", type=int, default=1211, help="Number of speaker classes in the model.")
     parser.add_argument("--threshold", type=float, default=0.7, help="Confidence threshold for 'unknown'.")
     parser.add_argument("--label_map_file", type=str, default="", help="Path to a label_map file (optional).")
     args = parser.parse_args()
@@ -191,7 +165,7 @@ if __name__ == "__main__":
         threshold=args.threshold,
         label_map=label_map,
         num_mfcc=40,
-        max_len=200,
+        max_len=400,
         is_file_path=True
     )
 
