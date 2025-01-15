@@ -114,7 +114,8 @@ const HomePage = () => {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log("Upload successful:", data);
+        console.log(data)
+        alert(`Upload successful: ${data.status}\n Confidence: ${data.confidence}`);
         setIsUploading(false);
       })
       .catch((error) => {
@@ -181,10 +182,17 @@ const HomePage = () => {
       .then((response) => response.json())
       .then((data) => {
         setIsUploading(false);
-        if (data.status === "fail") {
+        if (data.status === "fail" && data.message === "Unknown speaker") {
           setRegisterFile(true);
           alert("No match found. If you wish, upload your voice to the dataset.")
         }
+        if(data.status === "fail"){
+          alert("Voice did not match claimed id. Authentication failed.")
+        }
+        if(data.status === "success"){
+          alert("Authentication completed!")
+        }  
+        
       })
       .catch((error) => {
         console.error("Error uploading file:", error);

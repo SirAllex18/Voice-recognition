@@ -27,8 +27,7 @@ app.add_middleware(
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_SPEAKERS = 1211
-
+NUM_SPEAKERS = 201
 model_path = "speaker_cnn_model.pth"
 model = load_model(model_path, num_speakers=NUM_SPEAKERS, device=device)
 

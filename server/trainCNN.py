@@ -13,7 +13,7 @@ y_train_part = np.load("y_train_part.npy")
 X_val = np.load("X_val.npy")
 y_val = np.load("y_val.npy")
 
-
+X_test = np.load("X_test.npy")
 y_test = np.load("y_test.npy")
 
 
@@ -44,10 +44,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5)
+optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-4)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=7)
 
-EPOCHS = 12
+EPOCHS = 15
 for epoch in range(EPOCHS):
     model.train()
     running_loss = 0.0

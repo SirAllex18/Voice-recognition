@@ -8,7 +8,7 @@ def extract_mfcc(
     wav_path,
     sr=16000,
     n_mfcc=40,
-    max_len=400
+    max_len=300
 ):
     """
     Load a .wav file and extract MFCC + delta + delta-delta features.
@@ -39,7 +39,7 @@ def extract_mfcc(
 
     return combined
 
-def load_data(data_root, sr=16000, n_mfcc=40, max_len=200):
+def load_data(data_root, sr=16000, n_mfcc=40, max_len=300):
     """
     Recursively walk through the VoxCeleb-style directory and extract MFCCs.
     data_root can be 'data/training_data' or 'data/testing_data'.

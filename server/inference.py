@@ -22,30 +22,9 @@ def extract_mfcc_inference(
     audio_input,
     sr=16000,
     n_mfcc=40,
-    max_len=400,
+    max_len=300,
     is_file_path=True
 ):
-    """
-    Extract MFCC features using the same parameters as loadData.py.
-
-    Parameters
-    ----------
-    audio_input: str or bytes
-        - If is_file_path=True, this is a path to a .wav file.
-        - If is_file_path=False, this is a bytes object (raw audio).
-    sr: int
-        Target sampling rate (16k).
-    n_mfcc: int
-        Number of MFCC coefficients.
-    max_len: int
-        Fixed length for MFCC time steps.
-    is_file_path: bool
-        True if audio_input is a file path, False if audio_input is raw bytes.
-
-    Returns
-    -------
-    mfcc : np.ndarray of shape (n_mfcc, max_len)
-    """
     if is_file_path:
         y, orig_sr = librosa.load(audio_input, sr=None)
     else:
@@ -56,16 +35,18 @@ def extract_mfcc_inference(
         orig_sr = sr
     
     mfcc = librosa.feature.mfcc(y=y, sr=orig_sr, n_mfcc=n_mfcc)
+    delta_mfcc = librosa.feature.delta(mfcc)
+    delta2_mfcc = librosa.feature.delta(mfcc, order=2)
+    combined = np.concatenate((mfcc, delta_mfcc, delta2_mfcc), axis=0)
+    combined = (combined - np.mean(combined)) / (np.std(combined) + 1e-9)
     
-    mfcc = (mfcc - np.mean(mfcc)) / (np.std(mfcc) + 1e-9)
-    
-    if mfcc.shape[1] < max_len:
-        pad_width = max_len - mfcc.shape[1]
-        mfcc = np.pad(mfcc, ((0, 0), (0, pad_width)), mode='constant')
+    if combined.shape[1] < max_len:
+        pad_width = max_len - combined.shape[1]
+        combined = np.pad(combined, ((0, 0), (0, pad_width)), mode='constant')
     else:
-        mfcc = mfcc[:, :max_len]
+        combined = combined[:, :max_len]
     
-    return mfcc
+    return combined
 
 def predict_speaker(
     model: nn.Module,
@@ -74,7 +55,7 @@ def predict_speaker(
     threshold: float = 0.7,
     reverse_label_map= None,
     num_mfcc: int = 40,
-    max_len: int = 400,
+    max_len: int = 300,
     is_file_path=True
 ):
     """
@@ -106,7 +87,7 @@ def predict_speaker(
     predicted_label_or_unknown, confidence
     """
 
-    mfcc = extract_mfcc_inference(
+    combined = extract_mfcc_inference(
         audio_input=audio_input,
         sr=16000,
         n_mfcc=num_mfcc,
@@ -114,7 +95,7 @@ def predict_speaker(
         is_file_path=is_file_path
     ) 
 
-    input_tensor = torch.tensor(mfcc, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
+    input_tensor = torch.tensor(combined, dtype=torch.float32).unsqueeze(0).unsqueeze(0).to(device)
 
     with torch.no_grad():
         outputs = model(input_tensor)   
@@ -142,7 +123,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_path", type=str, required=True, help="Path to a .wav file.")
     parser.add_argument("--model_path", type=str, default="speaker_cnn_model.pth", help="Path to the trained model state_dict.")
-    parser.add_argument("--num_speakers", type=int, default=1211, help="Number of speaker classes in the model.")
+    parser.add_argument("--num_speakers", type=int, default=201, help="Number of speaker classes in the model.")
     parser.add_argument("--threshold", type=float, default=0.7, help="Confidence threshold for 'unknown'.")
     parser.add_argument("--label_map_file", type=str, default="", help="Path to a label_map file (optional).")
     args = parser.parse_args()
@@ -165,7 +146,7 @@ if __name__ == "__main__":
         threshold=args.threshold,
         label_map=label_map,
         num_mfcc=40,
-        max_len=400,
+        max_len= 300,
         is_file_path=True
     )
 
