@@ -43,6 +43,14 @@ const HomePage = () => {
   let mediaRecorder;
   let audioChunks = [];
 
+
+  useEffect(() => {
+    if (loggedInUser?.user?.nume === "admin") {
+      setAdminPage(true);
+    } else {
+      setAdminPage(false);
+    }
+  }, [loggedInUser]);
   useEffect(() => {
     const getUsers = async () => {
       try {
@@ -58,7 +66,7 @@ const HomePage = () => {
       }
     };
     getUsers();
-  }, [users]);
+  }, []);
 
   const startRecording = () => {
     if (isLogin === false) {
@@ -186,7 +194,7 @@ const HomePage = () => {
           setRegisterFile(true);
           alert("No match found. If you wish, upload your voice to the dataset.")
         }
-        if(data.status === "fail"){
+        if(data.status === "fail" && data.message !== "Unknown speaker"){
           alert("Voice did not match claimed id. Authentication failed.")
         }
         if(data.status === "success"){
@@ -324,9 +332,7 @@ const HomePage = () => {
       alert("Something went wrong while deleting the user.");
     }
   };
-  if (loggedInUser?.user?.nume === "admin") {
-    setAdminPage(true);
-  }
+
   return (
     <>
       <Box
@@ -516,7 +522,9 @@ const HomePage = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {users.map((user, index) => (
+                    {users
+                    .filter((user) => user.nume !== "admin")
+                    .map((user, index) => (
                       <TableRow key={user._id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>

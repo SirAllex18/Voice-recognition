@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-NUM_SPEAKERS = 201
+NUM_SPEAKERS = 202
 model_path = "speaker_cnn_model.pth"
 model = load_model(model_path, num_speakers=NUM_SPEAKERS, device=device)
 
@@ -173,6 +173,7 @@ async def authenticate_speaker(
         reverse_label_map=reverse_label_map
     )
 
+
     if predicted_label == "unknown":
         return {
             "status": "fail",
@@ -180,7 +181,7 @@ async def authenticate_speaker(
             "confidence": confidence
         }
 
-    if predicted_label == claimed_id and confidence > 0.25:
+    if predicted_label == claimed_id and confidence > 0.1:
         return {
             "status": "success",
             "message": f"Voice matches claimed ID: {claimed_id}",

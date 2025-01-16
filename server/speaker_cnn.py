@@ -14,8 +14,8 @@ class SpeakerCNN(nn.Module):
         
         self.pool = nn.MaxPool2d(2, 2)
         
-        self.fc1 = nn.Linear(72000, 64)
-        self.fc2 = nn.Linear(64, num_speakers)
+        self.fc1 = nn.Linear(72000, 256)
+        self.fc2 = nn.Linear(256, num_speakers)
 
     def forward(self, x):
         # Block 1

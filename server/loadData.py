@@ -125,8 +125,7 @@ if __name__ == "__main__":
         X_train,
         y_train,
         test_size=val_ratio,
-        random_state=42,  
-        stratify=y_train  
+        random_state=42
     )
 
     print("Train part shape:", X_train_part.shape)

@@ -123,7 +123,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio_path", type=str, required=True, help="Path to a .wav file.")
     parser.add_argument("--model_path", type=str, default="speaker_cnn_model.pth", help="Path to the trained model state_dict.")
-    parser.add_argument("--num_speakers", type=int, default=201, help="Number of speaker classes in the model.")
+    parser.add_argument("--num_speakers", type=int, default=202, help="Number of speaker classes in the model.")
     parser.add_argument("--threshold", type=float, default=0.7, help="Confidence threshold for 'unknown'.")
     parser.add_argument("--label_map_file", type=str, default="", help="Path to a label_map file (optional).")
     args = parser.parse_args()

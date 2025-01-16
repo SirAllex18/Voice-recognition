@@ -42,12 +42,12 @@ model = SpeakerCNN(num_speakers=num_speakers)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
-
+print(torch.cuda.is_available())
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-4)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=7)
 
-EPOCHS = 15
+EPOCHS = 50
 for epoch in range(EPOCHS):
     model.train()
     running_loss = 0.0
