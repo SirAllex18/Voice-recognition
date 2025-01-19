@@ -58,35 +58,6 @@ def predict_speaker(
     max_len: int = 300,
     is_file_path=True
 ):
-    """
-    Predict the speaker ID or 'unknown' from a given audio input.
-    
-    Parameters
-    ----------
-    model : nn.Module
-        Loaded SpeakerCNN model in eval mode.
-    audio_input : str or bytes
-        - If is_file_path=True, then a path to a .wav file.
-        - Else, raw audio bytes (for an API).
-    device : torch.device
-        "cpu" or "cuda".
-    threshold : float
-        Probability threshold to decide if speaker is 'unknown'.
-    label_map : dict
-        Maps numeric labels -> speaker IDs, e.g. {0: "id10291", 1: "id10292", ...}.
-        If None, will return the numeric label instead of a speaker ID string.
-    num_mfcc : int
-        Must match training extraction.
-    max_len : int
-        Must match training extraction.
-    is_file_path : bool
-        True if audio_input is a filepath, False if audio bytes.
-
-    Returns
-    -------
-    predicted_label_or_unknown, confidence
-    """
-
     combined = extract_mfcc_inference(
         audio_input=audio_input,
         sr=16000,

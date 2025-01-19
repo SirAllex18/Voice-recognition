@@ -17,7 +17,12 @@ import {
   TableHead,
   TableRow,
   Paper,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
+import LogoutIcon from "@mui/icons-material/Logout";
+import DriveFolderUploadIcon from "@mui/icons-material/DriveFolderUpload";
 
 const HomePage = () => {
   const [isLogin, setLogin] = useState(false);
@@ -40,9 +45,10 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setAdminPage] = useState(false);
   const [submitedVoice, setSubmitedVoice] = useState(false);
+  const [uploadAction, setUploadAction] = useState("recognize");
+
   let mediaRecorder;
   let audioChunks = [];
-
 
   useEffect(() => {
     if (loggedInUser?.user?.nume === "admin") {
@@ -122,8 +128,10 @@ const HomePage = () => {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log(data)
-        alert(`Upload successful: ${data.status}\n Confidence: ${data.confidence}`);
+        console.log(data);
+        alert(
+          `Upload successful: ${data.speaker_id}\n Confidence: ${data.confidence}`
+        );
         setIsUploading(false);
       })
       .catch((error) => {
@@ -192,15 +200,16 @@ const HomePage = () => {
         setIsUploading(false);
         if (data.status === "fail" && data.message === "Unknown speaker") {
           setRegisterFile(true);
-          alert("No match found. If you wish, upload your voice to the dataset.")
+          alert(
+            "No match found. If you wish, upload your voice to the dataset."
+          );
         }
-        if(data.status === "fail" && data.message !== "Unknown speaker"){
-          alert("Voice did not match claimed id. Authentication failed.")
+        if (data.status === "fail" && data.message !== "Unknown speaker") {
+          alert("Voice did not match claimed id. Authentication failed.");
         }
-        if(data.status === "success"){
-          alert("Authentication completed!")
-        }  
-        
+        if (data.status === "success") {
+          alert("Authentication completed!");
+        }
       })
       .catch((error) => {
         console.error("Error uploading file:", error);
@@ -228,6 +237,7 @@ const HomePage = () => {
     setAdminPage(false);
     setVoiceRecording(null);
     setSubmitedVoice(false);
+    setRegisterFile(false);
     alert("You have been logged out");
   };
 
@@ -299,8 +309,9 @@ const HomePage = () => {
     });
     const data = await submitDataset.json();
     if (submitDataset.ok) {
-      alert("File uploaded succesfully")
-      setSubmitedVoice(true)
+      alert("File uploaded succesfully");
+      setSubmitedVoice(true);
+      setRegisterFile(false);
       console.log("File uploaded succesfully");
     } else {
       console.log(data, "File not uploaded");
@@ -333,6 +344,20 @@ const HomePage = () => {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || file.type !== "audio/wav") {
+      alert("Please upload a valid .wav file.");
+      return;
+    }
+
+    if (uploadAction === "recognize") {
+      uploadAudio(file);
+    } else {
+      uploadAudioAuthenticate(file);
+    }
+  };
+
   return (
     <>
       <Box
@@ -351,11 +376,25 @@ const HomePage = () => {
           Your personal voice authentication application
         </Typography>
         {isLogin && (
-          <Typography variant="h6" align="center" marginBottom="0.15rem">
-            Hello, {loggedInUser.user.prenume}
-          </Typography>
+          <Box>
+            <Typography variant="h6" align="center" marginBottom="0.15rem">
+              Hello, {loggedInUser.user.prenume}
+            </Typography>
+            <Box sx={{ display: "flex", justifyContent: "center" }}>
+              <LogoutIcon
+                onClick={handleLogout}
+                sx={{
+                  cursor: "pointer",
+                  color: "white",
+                  "&:hover": {
+                    color: "red",
+                  },
+                }}
+              />
+            </Box>
+          </Box>
         )}
-        <Typography variant="body1" marginBottom="0.5rem">
+        <Typography variant="body1" marginBottom="0.5rem" marginTop="1rem">
           {" "}
           Choose your usage:
         </Typography>
@@ -404,20 +443,76 @@ const HomePage = () => {
             )}
           </Box>
         </Box>
-
         {registerFile && (
           <Box>
-            <Button disabled={submitedVoice} onClick={handleSubmitDataset}>
+            <Button
+              disabled={submitedVoice}
+              sx={{ marginTop: "0.5rem", marginBottom: "1rem" }}
+              onClick={handleSubmitDataset}
+            >
               Submit voice into dataset
             </Button>
           </Box>
         )}
-
-        {isLogin && (
-          <Box>
-            <Button onClick={handleLogout}>Logout</Button>
-          </Box>
-        )}
+        <Typography variant="body1">Or upload file:</Typography>
+        <RadioGroup
+          row
+          value={uploadAction}
+          onChange={(e) => setUploadAction(e.target.value)}
+          sx={{
+            "& .MuiFormControlLabel-label": {
+              color: "white",
+            },
+          }}
+        >
+          <FormControlLabel
+            value="recognize"
+            control={
+              <Radio
+                sx={{
+                  color: "white",
+                  "&.Mui-checked": {
+                    color: "red",
+                  },
+                }}
+              />
+            }
+            label="Recognition"
+          />
+          <FormControlLabel
+            value="authenticate"
+            control={
+              <Radio
+                sx={{
+                  color: "white",
+                  "&.Mui-checked": {
+                    color: "red",
+                  },
+                }}
+              />
+            }
+            label="Authentication"
+          />
+        </RadioGroup>
+        <DriveFolderUploadIcon
+          sx={{
+            fontSize: 40,
+            color: "primary.main",
+            cursor: "pointer",
+            marginTop: "0.5rem",
+            "&:hover": {
+              color: "red",
+            },
+          }}
+          onClick={() => document.getElementById("file-input").click()}
+        />
+        <input
+          type="file"
+          id="file-input"
+          accept=".wav"
+          hidden
+          onChange={handleFileUpload}
+        />
 
         {/* Dialog */}
         <Dialog open={openDialog} onClose={handleCloseDialog}>
@@ -523,25 +618,25 @@ const HomePage = () => {
                   </TableHead>
                   <TableBody>
                     {users
-                    .filter((user) => user.nume !== "admin")
-                    .map((user, index) => (
-                      <TableRow key={user._id}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>
-                          {user.nume} {user.prenume}
-                        </TableCell>
-                        <TableCell>{user.mail}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => handleDeleteUser(user._id)}
-                          >
-                            Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                      .filter((user) => user.nume !== "admin")
+                      .map((user, index) => (
+                        <TableRow key={user._id}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>
+                            {user.nume} {user.prenume}
+                          </TableCell>
+                          <TableCell>{user.mail}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="contained"
+                              color="secondary"
+                              onClick={() => handleDeleteUser(user._id)}
+                            >
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </TableContainer>

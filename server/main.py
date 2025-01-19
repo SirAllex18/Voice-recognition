@@ -116,33 +116,24 @@ def root():
 
 @app.post("/recognize")
 async def recognize_speaker(file: UploadFile = File(...)):
-    """
-    Endpoint to recognize speaker from a .wav file.
-    Returns JSON with either {"speaker_id": "...", "confidence": ...}
-    or {"status": "unknown_speaker", "confidence": ...}.
-    """
-
     audio_bytes = await file.read()
 
     speaker_label, confidence = predict_speaker(
         model=model,
         audio_input=audio_bytes,
         device=device,
-        threshold=0.25,   
+        threshold=0.6,   
         is_file_path=False,  
         reverse_label_map=reverse_label_map
     )
 
     if speaker_label == "unknown":
-        return {"status": "unknown_speaker", "confidence": confidence}
+        return {"speaker_id": "unknown_speaker", "confidence": confidence}
     else:
         return {"speaker_id": speaker_label, "confidence": confidence}
     
 @app.get("/users")
 async def get_users():
-    """
-    Retrieve all users from the database and return them to the front-end.
-    """
     users = []
     async for user in users_collection.find():
         user["_id"] = str(user["_id"])
@@ -158,30 +149,30 @@ async def authenticate_speaker(
 ):
     """
     Endpoint to authenticate a user who claims to be `claimed_id`.
-    The model will classify the .wav file, and if the predicted label
-    matches `claimed_id` (and confidence > threshold), we confirm.
-    Otherwise, we reject.
+    If no folder matches the `claimed_id`, return early with a failure response.
     """
+
+    base_path = os.path.join("data", "training_data", "wav")
+    claimed_id_path = os.path.join(base_path, claimed_id)
+
+    if not os.path.isdir(claimed_id_path):
+        return {
+            "status": "fail",
+            "message": "Unknown speaker"
+        }
+
     audio_bytes = await file.read()
 
     predicted_label, confidence = predict_speaker(
         model=model,
         audio_input=audio_bytes,
         device=device,
-        threshold=0.25,      
+        threshold=0.6,      
         is_file_path=False,
         reverse_label_map=reverse_label_map
     )
 
-
-    if predicted_label == "unknown":
-        return {
-            "status": "fail",
-            "message": "Unknown speaker",
-            "confidence": confidence
-        }
-
-    if predicted_label == claimed_id and confidence > 0.1:
+    if predicted_label == claimed_id and confidence > 0.6:
         return {
             "status": "success",
             "message": f"Voice matches claimed ID: {claimed_id}",
@@ -194,7 +185,6 @@ async def authenticate_speaker(
             "predicted_label": predicted_label,
             "confidence": confidence
         }
-
 
 
 @app.post("/enroll_voice")
